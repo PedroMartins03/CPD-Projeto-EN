@@ -6,6 +6,7 @@ para testar as funções que vão ser ligadas ao servidor.
 
 import json
 import socket
+from game_of_life import generate_random_grid
 
 # Endereço e porta onde o servidor está à escuta.
 # Como o teste é local, o cliente liga-se ao localhost.
@@ -57,16 +58,19 @@ def enviar_pedido(method, params=None):
         return receber_json(client_socket)
 
 def mostrar_resposta(resposta):
-    """Mostra no ecrã o resultado ou o erro recebido."""
-    if "result" in resposta:
-        print("Resultado:")
-        print(resposta["result"])
-    elif "error" in resposta:
-        print("Erro:")
-        print(resposta["error"])
+    if "error" in resposta:
+        print("Erro:", resposta["error"])
+        return
+    
+    resultado = resposta["result"]
+
+    if isinstance(resultado, dict):
+        print("\n===== RESULTADO =====")
+        for chave, valor in resultado.items():
+            print(f"{chave}: {valor}")
+
     else:
-        print("Resposta invalida:")
-        print(resposta)
+        print(resultado)
 
 def ler_inteiro(mensagem):
     """Lê um número inteiro introduzido pelo utilizador."""
@@ -107,19 +111,67 @@ def menu():
                 mostrar_resposta(resposta_par)
 
             elif opcao == "4":
-                print("Introduza a grelha em JSON. Exemplo: [[0,1,0],[1,1,1],[0,1,0]]")
-                grid = json.loads(input("Grelha: ").strip())
-                generations = ler_inteiro("Geracoes: ")
+
+                size = input("Tamanho da grelha (ex: 2000x2000): ").strip()
+
+                try:
+                    rows, cols = map(int, size.lower().split("x"))
+                except ValueError:
+                    print("Formato inválido! Utilize por exemplo: 2000x2000")
+                    continue
+
+                generations = ler_inteiro("Número de gerações: ")
+                workers = ler_inteiro("Número de workers: ")
+
+                print("\nA gerar grelha aleatória...")
+                grid = generate_random_grid(rows, cols)
+
+                print("\nA executar versão sequencial...")
+
                 resposta_seq = enviar_pedido(
                     "game_of_life_sequential",
-                    {"grid": grid, "generations": generations}
+                    {
+                        "grid": grid,
+                        "generations": generations
+                    }
                 )
-                mostrar_resposta(resposta_seq)
+
+                if "error" in resposta_seq:
+                    print("Erro:", resposta_seq["error"])
+                    continue
+
+                tempo_seq = resposta_seq["result"]["tempo"]
+
+                print("A executar versão paralela...")
+
                 resposta_par = enviar_pedido(
                     "game_of_life_parallel",
-                    {"grid": grid, "generations": generations}
+                    {
+                        "grid": grid,
+                        "generations": generations,
+                        "workers": workers
+                    }
                 )
-                mostrar_resposta(resposta_par)
+
+                if "error" in resposta_par:
+                    print("Erro:", resposta_par["error"])
+                    continue
+
+                tempo_par = resposta_par["result"]["tempo"]
+
+                speedup = tempo_seq / tempo_par
+
+                print("\n==========================================")
+                print("           GAME OF LIFE")
+                print("==========================================")
+                print(f"Tamanho da grelha : {rows}x{cols}")
+                print(f"Gerações          : {generations}")
+                print(f"Workers           : {workers}")
+                print("------------------------------------------")
+                print(f"Tempo Sequencial  : {tempo_seq:.6f} s")
+                print(f"Tempo Paralelo    : {tempo_par:.6f} s")
+                print(f"Speedup           : {speedup:.2f}x")
+                print("==========================================")
 
             elif opcao == "m":
                 # Esta opção fica preparada para testar futuras funções do grupo.

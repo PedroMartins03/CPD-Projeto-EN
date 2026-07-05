@@ -8,6 +8,7 @@ import inspect
 import json
 import socket
 import threading
+import time
 
 # Configuração inicial do servidor.
 # O servidor fica à escuta em todas as ‘interfaces’ da máquina, na porta 8000.
@@ -29,11 +30,32 @@ def prime_is_prime(n):
 
 from game_of_life import game_of_life_parallel, game_of_life_sequential
 
-def game_of_life_par(grid, generations):
-    return f"Game Of Life Paralelo com {generations} gerações e {DEFAULT_WORKERS} workers... ",game_of_life_parallel(grid, generations, DEFAULT_WORKERS)
-
 def game_of_life_seq(grid, generations):
-    return f"Game Of Life Sequencial com {generations} gerações... ",game_of_life_sequential(grid, generations)
+
+    inicio = time.perf_counter()
+
+    game_of_life_sequential(grid, generations)
+
+    fim = time.perf_counter()
+
+    return {
+        "tempo": fim - inicio
+    }
+
+
+def game_of_life_par(grid, generations, workers):
+
+    inicio = time.perf_counter()
+
+    game_of_life_parallel(grid, generations, workers)
+
+    fim = time.perf_counter()
+
+    return {
+        "tempo": fim - inicio,
+        "workers": workers
+    }
+
 
 def list_methods():
     """Devolve a lista de operações disponíveis no servidor."""
