@@ -221,31 +221,38 @@ def game_of_life_parallel(grid, generations, workers):
 
     for generation in range(generations):
 
+        # dividir o trabalho
         rows_per_worker = total_rows // workers
 
+        # Onde vai guardar o trabalho de cada worker
         tasks = []
 
         current_start = 0
 
         # Dividir linhas pelos workers
         for worker in range(workers):
-
+            # calcular onde termina o worker
             current_end = (current_start + rows_per_worker)
 
             # Último worker fica com o resto
             if worker == workers - 1:
                 current_end = total_rows
 
+            # Guardar tarefas
             tasks.append((current_grid, current_start, current_end))
 
+            # Preparar próximo worker (current_start = 250)
             current_start = current_end
 
         # Criar workers
         pool = multiprocessing.Pool(processes=workers)
 
+        # Dividir as tarefas pelos os workers
         partial_results = pool.map(worker_task, tasks)
 
+        # Fechar o processo
         pool.close()
+        # Esperar que todos terminem
         pool.join()
 
         # Ordenar resultados
